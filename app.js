@@ -15,6 +15,13 @@
   let touchStart = null;
 
   scenes.forEach((scene, n) => {
+    if (!scene.matches('.cover,.dilemma,.conversation,.dark,.poetry,.return,.question')) {
+      const scenery = document.createElement('div');
+      scenery.className = 'scenery';
+      scenery.setAttribute('aria-hidden', 'true');
+      scene.prepend(scenery);
+    }
+    scene.querySelectorAll('.distance-list article,.archive-folio article,.evidence-scale article,.craft-node,.craft-path i,.experiment-step,.map-node').forEach((element, part) => element.style.setProperty('--part', part));
     scene.querySelectorAll('.reveal').forEach((element, order) => {
       element.style.setProperty('--delay', `${Math.min(order * 145, 850)}ms`);
     });
@@ -34,7 +41,7 @@
       return value ? Math.max(0, Math.min(scenes.length - 1, Number(value[1]) - 1)) : 0;
     }
     try {
-      const value = Number(sessionStorage.getItem('gujiu.scene.v2'));
+      const value = Number(sessionStorage.getItem('gujiu.scene.v3'));
       return Number.isInteger(value) && value >= 0 && value < scenes.length ? value : 0;
     } catch { return 0; }
   }
@@ -54,6 +61,8 @@
     // Force a fresh entrance when returning to a previously visited scene.
     void scenes[index].offsetWidth;
     scenes[index].classList.add('arrived');
+    document.querySelector('.total').textContent = `/ ${scenes.length}`;
+    document.querySelector('.timeline').setAttribute('aria-valuemax', String(scenes.length));
     document.querySelector('#count').textContent = String(index + 1).padStart(2, '0');
     document.querySelector('#scene-name').textContent = scenes[index].dataset.title;
     document.querySelector('#progress').style.width = `${(index + 1) / scenes.length * 100}%`;
@@ -66,7 +75,7 @@
     });
     try {
       history.replaceState(null, '', `#${index + 1}`);
-      sessionStorage.setItem('gujiu.scene.v2', String(index));
+      sessionStorage.setItem('gujiu.scene.v3', String(index));
     } catch { /* File previews and private mode may restrict persistence. */ }
     announce.textContent = `第 ${index + 1} 幕，共 ${scenes.length} 幕。${scenes[index].dataset.title}`;
     if (focusWasInScene) {
@@ -88,7 +97,9 @@
   // Multi-scale noise changes both the wet edge and pigment density. This gives
   // diffusion, granulation and paper-like pinholes without a per-frame filter.
   const stamps = [];
-  function makeStamp(seed) {
+  const vermilionStamps = [];
+  let activeStamps = stamps;
+  function makeStamp(seed, vermilion = false) {
     const size = 256;
     const random = randomSource(seed);
     const grids = [9, 23, 57].map(side => ({side, values: Array.from({length:(side + 1) ** 2}, random)}));
@@ -116,7 +127,9 @@
       if(distance>.8) alpha *= .60 + n*.4;
       const pigment=(n-.5)*21;
       const at=(y*size+x)*4;
-      pixels.data[at]=39+pigment; pixels.data[at+1]=48+pigment; pixels.data[at+2]=40+pigment;
+      pixels.data[at]=(vermilion ? 164 : 39)+pigment;
+      pixels.data[at+1]=(vermilion ? 44 : 48)+pigment;
+      pixels.data[at+2]=(vermilion ? 30 : 40)+pigment;
       pixels.data[at+3]=Math.round(alpha*255);
     }
     ctx.putImageData(pixels,0,0);
@@ -125,16 +138,17 @@
 
   function stampBloom(bloom, radius) {
     const extent = radius * 1.35;
-    context.drawImage(stamps[bloom.stamp], bloom.x-extent, bloom.y-extent*bloom.stretch, extent*2, extent*2*bloom.stretch);
+    context.drawImage(activeStamps[bloom.stamp], bloom.x-extent, bloom.y-extent*bloom.stretch, extent*2, extent*2*bloom.stretch);
   }
 
-  function makeBlooms(width, height, direction, seed) {
+  function makeBlooms(width, height, direction, seed, origin = null) {
     const random = randomSource(seed);
     const blooms = [];
     for (let i = 0; i < 38; i++) {
       const x = random();
       const y = random();
-      blooms.push({ x: x * width, y: y * height, delay: (direction > 0 ? x : 1 - x) * .48 + random() * .08, radius: Math.max(width * .22, height * .35) * (.65 + random() * .6), stretch: .7 + random() * .65, stamp:i % 6 });
+      const distance = origin ? Math.hypot(x-origin.x,y-origin.y)/1.42 : (direction > 0 ? x : 1-x);
+      blooms.push({ x: x * width, y: y * height, delay: distance * .48 + random() * .08, radius: Math.max(width * .22, height * .35) * (.65 + random() * .6), stretch: .7 + random() * .65, stamp:i % 6 });
     }
     return blooms;
   }
@@ -160,6 +174,9 @@
   function inkTransition(target) {
     if (motion.matches || !context) { activate(target); return; }
     if (!stamps.length) for(let i=0;i<6;i++) stamps.push(makeStamp(813+i*117));
+    const vermilion = target === 1 || (index === 1 && target === 0);
+    if (vermilion && !vermilionStamps.length) for(let i=0;i<6;i++) vermilionStamps.push(makeStamp(913+i*117,true));
+    activeStamps = vermilion ? vermilionStamps : stamps;
     busy = true;
     document.body.classList.add('transitioning');
     document.querySelector('#deck').setAttribute('aria-busy', 'true');
@@ -167,13 +184,15 @@
     const width = canvas.width = Math.round(innerWidth * scale);
     const height = canvas.height = Math.round(innerHeight * scale);
     const direction = target > index ? 1 : -1;
-    const ink = makeBlooms(width, height, direction, target * 913 + 71);
-    const water = makeBlooms(width, height, direction, target * 773 + 19);
+    const chapterChange = scenes[index].dataset.chapter !== scenes[target].dataset.chapter;
+    const origin = vermilion ? {x:.73,y:.45} : chapterChange ? {x:.5,y:.5} : null;
+    const ink = makeBlooms(width, height, direction, target * 913 + 71, origin);
+    const water = makeBlooms(width, height, direction, target * 773 + 19, origin);
     const random = randomSource(target * 37 + 913);
     const flecks = Array.from({ length: 100 }, () => ({ x: random() * width, y: random() * height, radius: .5 + random() * 4, at: .05 + random() * .5 }));
     let started = null;
     let switched = false;
-    const duration = 1650;
+    const duration = vermilion || chapterChange ? 2200 : 1850;
     const finish = () => {
       cancelAnimationFrame(frame);
       if (!switched) activate(target);
@@ -190,7 +209,7 @@
       context.clearRect(0, 0, width, height);
       spread(ink, Math.min(1, t / .46), false, width, height);
       if (t < .46) {
-        context.fillStyle = 'rgba(40,50,40,.55)';
+        context.fillStyle = vermilion ? 'rgba(164,44,30,.65)' : 'rgba(40,50,40,.65)';
         flecks.forEach(fleck => {
           if (t / .46 < fleck.at) return;
           context.beginPath();
