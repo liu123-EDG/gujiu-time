@@ -28,11 +28,16 @@
     const last=questions[2].options[answers[2]][1];
     const winner=scores.map((score,i)=>({score:score*10+last[i],i})).sort((a,b)=>b.score-a.score)[0].i;
     const result=personalities[winner];
+    const artNames=['li','chrysanthemum','gui','sangluo'];
+    const art=$('#personality-art');
+    art.querySelector('img').src=`assets/personalities/${artNames[winner]}.webp`;
+    art.querySelector('img').alt=`${result.name}的水彩意象插画`;
+    art.hidden=false;$('.personality-scene').classList.add('has-personality');
     $('#personality-name').textContent=result.name;$('#personality-traits').textContent=result.traits;$('#personality-copy').textContent=result.copy;$('#personality-line').textContent=result.line;
     $('#quiz-questions').hidden=true;$('#quiz-result').hidden=false;$('#personality-name').tabIndex=-1;$('#personality-name').focus({preventScroll:true});
   }
   $('#quiz-back').addEventListener('click',()=>{if(step>0){step--;renderQuestion(true);}});
-  $('#quiz-restart').addEventListener('click',()=>{answers=[];step=0;renderQuestion(true);});renderQuestion();
+  $('#quiz-restart').addEventListener('click',()=>{answers=[];step=0;$('#personality-art').hidden=true;$('.personality-scene').classList.remove('has-personality');renderQuestion(true);});renderQuestion();
   const portraits={moon:{title:'月下知己',wine:'菊花酒意象',description:'把喧嚣留在远处，与你分享此刻的月色。',setting:'月色、青白衣衫与临水长夜'},osmanthus:{title:'桂影雅集',wine:'桂酒意象',description:'把好时光分给同席的人，让相聚成为节日。',setting:'桂花、琥珀金衣衫与庭院灯火'}};
   $('#avatar-form').addEventListener('submit',event=>{
     event.preventDefault();const data=new FormData(event.currentTarget);const mood=data.get('mood'),figure=data.get('figure');const portrait=portraits[mood];
