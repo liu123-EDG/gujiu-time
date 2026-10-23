@@ -171,6 +171,160 @@
     context.globalCompositeOperation = 'source-over';
   }
 
+  // Effects follow the story. Reverse navigation uses the same boundary effect.
+  const transitionScore = ['ink', 'ink', 'scroll', 'ripple', 'scroll', 'ink', 'ripple', 'scroll', 'data', 'ink', 'data', 'data', 'scroll', 'ripple', 'ripple', 'scroll'];
+  let paperPattern = null;
+  function preparePaper() {
+    if (paperPattern) return;
+    const sheet = document.createElement('canvas');
+    sheet.width = sheet.height = 192;
+    const brush = sheet.getContext('2d');
+    const random = randomSource(81371);
+    brush.fillStyle = '#dbccb0';
+    brush.fillRect(0, 0, 192, 192);
+    for (let i = 0; i < 1700; i++) {
+      const x = random() * 192, y = random() * 192;
+      brush.strokeStyle = random() > .5 ? 'rgba(107,89,55,.065)' : 'rgba(255,250,224,.20)';
+      brush.beginPath();
+      brush.moveTo(x, y);
+      brush.lineTo(x + random() * 6, y + random() * 2);
+      brush.stroke();
+    }
+    paperPattern = context.createPattern(sheet, 'repeat');
+  }
+
+  function drawScroll(coverage, width, height, direction) {
+    if (coverage <= 0) return;
+    preparePaper();
+    const eased = coverage * coverage * (3 - 2 * coverage);
+    const reach = width * .5 * eased;
+    const curl = Math.sin(coverage * Math.PI) * Math.min(34, width * .025);
+    const rod = Math.max(13, width * .014);
+    // Two textured sheets close over the old scene, then roll outward to reveal
+    // the new scene. Curved paper edges and shaded wooden rods provide volume.
+    for (const side of [-1, 1]) {
+      context.save();
+      if (side > 0) { context.translate(width, 0); context.scale(-1, 1); }
+      context.fillStyle = paperPattern;
+      context.beginPath();
+      context.moveTo(-2, -2);
+      context.lineTo(reach + 2, -2);
+      context.bezierCurveTo(reach + curl, height * .25, reach - curl, height * .75, reach + 2, height + 2);
+      context.lineTo(-2, height + 2);
+      context.closePath();
+      context.fill();
+      const shade = context.createLinearGradient(reach - rod * 2, 0, reach + rod, 0);
+      shade.addColorStop(0, '#4b3f2700'); shade.addColorStop(.6, '#4b3f272e'); shade.addColorStop(1, '#4b3f2700');
+      context.fillStyle = shade;
+      context.fillRect(reach - rod * 2, 0, rod * 3, height);
+      const wood = context.createLinearGradient(reach - rod / 2, 0, reach + rod / 2, 0);
+      wood.addColorStop(0, '#5a4932'); wood.addColorStop(.35, '#b49a6b'); wood.addColorStop(.55, '#c8ae7c'); wood.addColorStop(1, '#59452e');
+      context.fillStyle = wood;
+      context.fillRect(reach - rod / 2, -2, rod, height + 4);
+      context.fillStyle = '#443a2a';
+      context.fillRect(reach - rod * .65, 0, rod * 1.3, 6);
+      context.fillRect(reach - rod * .65, height - 6, rod * 1.3, 6);
+      context.strokeStyle = '#9e8a6133';
+      context.lineWidth = 1;
+      for (let line = 1; line <= 3; line++) {
+        context.beginPath(); context.moveTo(reach - rod * line * 1.8, 0); context.lineTo(reach - rod * line * 1.8, height); context.stroke();
+      }
+      context.restore();
+    }
+    // A passing calligraphic stroke belongs to the moving paper, not a UI label.
+    context.save();
+    context.globalAlpha = Math.sin(coverage * Math.PI) * .11;
+    context.fillStyle = '#514b34';
+    context.font = `${Math.min(height * .45, 280)}px "KaiTi", "SimSun", serif`;
+    context.textAlign = 'center'; context.textBaseline = 'middle';
+    context.fillText('酿', width * (direction > 0 ? .2 : .8), height * .5);
+    context.restore();
+  }
+
+  function prepareData(width, height, seed) {
+    const random = randomSource(seed);
+    const size = Math.max(34, Math.ceil(width / 25));
+    const cells = [];
+    const glyphs = ['米', '麴', '酿', '水', '温', '时', '曲', '原料', '工序'];
+    for (let y = 0; y < height; y += size) for (let x = 0; x < width; x += size) {
+      const distance = Math.hypot(x / width - .26, y / height - .48) / 1.2;
+      cells.push({x, y, size, delay: distance * .52 + random() * .16, glyph:glyphs[Math.floor(random() * glyphs.length)], label:random() > .62, tone:random()});
+    }
+    return cells;
+  }
+
+  function drawData(cells, progress, opening, direction) {
+    context.textAlign = 'center'; context.textBaseline = 'middle';
+    for (const cell of cells) {
+      const local = Math.max(0, Math.min(1, (progress - cell.delay) / (1 - cell.delay)));
+      const amount = opening ? 1 - local : local;
+      if (amount <= 0) continue;
+      const {x, y, size} = cell;
+      context.globalAlpha = Math.min(1, amount * 2.8);
+      context.fillStyle = cell.tone > .55 ? '#303e35' : '#344239';
+      // The full grid is opaque at the handoff; afterwards each cell disperses
+      // independently into a character, a line and a small research node.
+      const tileScale = Math.min(1, amount * 3.4);
+      const extent = (size + 1) * tileScale;
+      context.fillRect(x + (size - extent) / 2, y + (size - extent) / 2, extent, extent);
+      context.globalAlpha = Math.min(1, amount * 2) * .65;
+      context.strokeStyle = '#a2b28a'; context.lineWidth = .6;
+      context.beginPath();
+      context.moveTo(x + size * .5, y + size * .5);
+      context.lineTo(x + size * .5 + size * direction, y + size * .5);
+      context.stroke();
+      if (cell.label) {
+        context.font = `${Math.round(size * .38)}px "KaiTi", "SimSun", serif`;
+        context.fillStyle = '#d6c69a';
+        context.fillText(cell.glyph, x + size / 2, y + size / 2);
+      } else {
+        context.fillStyle = '#c8b17b';
+        context.beginPath(); context.arc(x + size / 2, y + size / 2, 1.4, 0, Math.PI * 2); context.fill();
+      }
+    }
+    context.globalAlpha = 1;
+  }
+
+  function ripplePath(x, y, radius) {
+    context.beginPath();
+    for (let i = 0; i <= 180; i++) {
+      const angle = i / 180 * Math.PI * 2;
+      const r = radius * (1 + Math.sin(angle * 7 + .7) * .009 + Math.sin(angle * 19) * .003);
+      const px = x + Math.cos(angle) * r, py = y + Math.sin(angle) * r * .76;
+      if (i === 0) context.moveTo(px, py); else context.lineTo(px, py);
+    }
+    context.closePath();
+  }
+
+  function drawRipple(closing, opening, width, height, direction) {
+    const x = width * (direction > 0 ? .71 : .29), y = height * .62;
+    const limit = Math.hypot(width, height) * 1.65;
+    const radius = Math.pow(closing, .86) * limit;
+    if (radius <= 0) return;
+    const liquid = context.createRadialGradient(x, y, 0, x, y, radius);
+    liquid.addColorStop(0, '#6b482c'); liquid.addColorStop(.5, '#9a7039'); liquid.addColorStop(.9, '#b79250'); liquid.addColorStop(1, '#806439');
+    context.fillStyle = liquid;
+    ripplePath(x, y, radius); context.fill();
+    context.lineWidth = 2;
+    for (let ring = 1; ring < 7; ring++) {
+      const r = radius * ring / 7;
+      context.strokeStyle = `rgba(238,216,165,${.11 + ring * .025})`;
+      ripplePath(x, y, r); context.stroke();
+      context.strokeStyle = 'rgba(59,47,29,.10)';
+      ripplePath(x, y, r + 3); context.stroke();
+    }
+    if (opening > 0) {
+      const reveal = Math.pow(opening, .8) * limit;
+      context.globalCompositeOperation = 'destination-out';
+      const edge = context.createRadialGradient(x, y, Math.max(0, reveal - 12), x, y, reveal);
+      edge.addColorStop(0, '#000'); edge.addColorStop(1, '#0000');
+      context.fillStyle = edge; ripplePath(x, y, reveal); context.fill();
+      context.globalCompositeOperation = 'source-over';
+      context.strokeStyle = `rgba(194,161,94,${(1-opening)*.8})`; context.lineWidth = 1.5;
+      ripplePath(x, y, reveal + 3); context.stroke();
+    }
+  }
+
   function inkTransition(target) {
     if (motion.matches || !context) { activate(target); return; }
     if (!stamps.length) for(let i=0;i<6;i++) stamps.push(makeStamp(813+i*117));
@@ -184,15 +338,19 @@
     const width = canvas.width = Math.round(innerWidth * scale);
     const height = canvas.height = Math.round(innerHeight * scale);
     const direction = target > index ? 1 : -1;
+    const boundary = Math.abs(target-index) === 1 ? Math.max(target,index) : target;
+    const effect = transitionScore[boundary] || 'ink';
+    canvas.dataset.effect = effect;
     const chapterChange = scenes[index].dataset.chapter !== scenes[target].dataset.chapter;
     const origin = vermilion ? {x:.73,y:.45} : chapterChange ? {x:.5,y:.5} : null;
     const ink = makeBlooms(width, height, direction, target * 913 + 71, origin);
     const water = makeBlooms(width, height, direction, target * 773 + 19, origin);
+    const dataCells = effect === 'data' ? prepareData(width,height,target*117+93) : null;
     const random = randomSource(target * 37 + 913);
     const flecks = Array.from({ length: 100 }, () => ({ x: random() * width, y: random() * height, radius: .5 + random() * 4, at: .05 + random() * .5 }));
     let started = null;
     let switched = false;
-    const duration = vermilion || chapterChange ? 2200 : 1850;
+    const duration = {ink:2200,scroll:2100,data:2300,ripple:2250}[effect];
     const finish = () => {
       cancelAnimationFrame(frame);
       if (!switched) activate(target);
@@ -207,8 +365,13 @@
       started ??= time;
       const t = Math.min(1, (time - started) / duration);
       context.clearRect(0, 0, width, height);
-      spread(ink, Math.min(1, t / .46), false, width, height);
-      if (t < .46) {
+      const closing = Math.min(1,t/.46);
+      const opening = Math.max(0,(t-.51)/.49);
+      if (effect === 'scroll') drawScroll(t <= .51 ? closing : 1-opening,width,height,direction);
+      else if (effect === 'data') drawData(dataCells,t <= .51 ? closing : opening,t > .51,direction);
+      else if (effect === 'ripple') drawRipple(closing,opening,width,height,direction);
+      else spread(ink,closing,false,width,height);
+      if (effect === 'ink' && t < .46) {
         context.fillStyle = vermilion ? 'rgba(164,44,30,.65)' : 'rgba(40,50,40,.65)';
         flecks.forEach(fleck => {
           if (t / .46 < fleck.at) return;
@@ -218,7 +381,7 @@
         });
       }
       if (t >= .46 && !switched) { activate(target); switched = true; }
-      if (t > .51) spread(water, (t - .51) / .49, true, width, height);
+      if (effect === 'ink' && t > .51) spread(water,opening,true,width,height);
       if (t < 1) frame = requestAnimationFrame(draw);
       else finish();
     }
