@@ -13,6 +13,7 @@
   let frame = 0;
   let completeTransition = null;
   let touchStart = null;
+  let filmActive = false;
 
   scenes.forEach((scene, n) => {
     if (!scene.matches('.cover,.dilemma,.conversation,.dark,.poetry,.return,.question')) {
@@ -172,7 +173,8 @@
   }
 
   // Effects follow the story. Reverse navigation uses the same boundary effect.
-  const transitionScore = ['ink', 'ink', 'scroll', 'ripple', 'scroll', 'ink', 'ripple', 'scroll', 'data', 'ink', 'data', 'data', 'scroll', 'ripple', 'ripple', 'scroll'];
+  const extraTransitions = window.createGujiuTransitions(context, { randomSource, getPaper: () => { preparePaper(); return paperPattern; } });
+  const transitionScore = extraTransitions.score.map(([effect]) => effect);
   let paperPattern = null;
   function preparePaper() {
     if (paperPattern) return;
@@ -341,6 +343,8 @@
     const boundary = Math.abs(target-index) === 1 ? Math.max(target,index) : target;
     const effect = transitionScore[boundary] || 'ink';
     canvas.dataset.effect = effect;
+    const isInk = effect === 'ink' || effect === 'vermilion';
+    const prepared = extraTransitions.prepare(effect,width,height,target*193+79);
     const chapterChange = scenes[index].dataset.chapter !== scenes[target].dataset.chapter;
     const origin = vermilion ? {x:.73,y:.45} : chapterChange ? {x:.5,y:.5} : null;
     const ink = makeBlooms(width, height, direction, target * 913 + 71, origin);
@@ -350,7 +354,7 @@
     const flecks = Array.from({ length: 100 }, () => ({ x: random() * width, y: random() * height, radius: .5 + random() * 4, at: .05 + random() * .5 }));
     let started = null;
     let switched = false;
-    const duration = {ink:2200,scroll:2100,data:2300,ripple:2250}[effect];
+    const duration = {ink:2200,vermilion:2200,scroll:2100,data:2300,ripple:2250}[effect] || 2250;
     const finish = () => {
       cancelAnimationFrame(frame);
       if (!switched) activate(target);
@@ -370,8 +374,9 @@
       if (effect === 'scroll') drawScroll(t <= .51 ? closing : 1-opening,width,height,direction);
       else if (effect === 'data') drawData(dataCells,t <= .51 ? closing : opening,t > .51,direction);
       else if (effect === 'ripple') drawRipple(closing,opening,width,height,direction);
-      else spread(ink,closing,false,width,height);
-      if (effect === 'ink' && t < .46) {
+      else if (isInk) spread(ink,closing,false,width,height);
+      else extraTransitions.render(effect,t <= .51 ? closing : 1-opening,width,height,direction,prepared);
+      if (isInk && t < .46) {
         context.fillStyle = vermilion ? 'rgba(164,44,30,.65)' : 'rgba(40,50,40,.65)';
         flecks.forEach(fleck => {
           if (t / .46 < fleck.at) return;
@@ -381,7 +386,7 @@
         });
       }
       if (t >= .46 && !switched) { activate(target); switched = true; }
-      if (effect === 'ink' && t > .51) spread(water,opening,true,width,height);
+      if (isInk && t > .51) spread(water,opening,true,width,height);
       if (t < 1) frame = requestAnimationFrame(draw);
       else finish();
     }
@@ -402,6 +407,10 @@
   previous.addEventListener('click', () => go(index - 1));
   next.addEventListener('click', () => go(index + 1));
   document.addEventListener('keydown', event => {
+    if (filmActive) {
+      if (event.key === 'Escape') { event.preventDefault(); closeFilm(); }
+      return;
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
     if (event.target.closest('input,textarea,select,[contenteditable="true"]')) return;
     // Leave Enter and Space to focused controls, links and FAQ summaries.
@@ -445,5 +454,41 @@
     go(readPosition());
   });
   motion.addEventListener('change', () => completeTransition?.());
-  activate(readPosition());
+  const film = document.querySelector('#film-intro');
+  const video = document.querySelector('#opening-film');
+  const playFilm = document.querySelector('#film-play');
+  function openFilm() {
+    completeTransition?.();
+    filmActive = true;
+    film.hidden = false;
+    document.querySelectorAll('#deck,.masthead,.controls,.scene-rail').forEach(element => { element.inert = true; });
+    video.currentTime = 0;
+    playFilm.focus({preventScroll:true});
+  }
+  function closeFilm() {
+    video.pause();
+    if (document.fullscreenElement === video) document.exitFullscreen().catch(() => {});
+    filmActive = false;
+    film.hidden = true;
+    document.querySelectorAll('#deck,.masthead,.controls,.scene-rail').forEach(element => { element.inert = false; });
+    activate(index);
+    const heading = scenes[index].querySelector('h1,h2');
+    heading.tabIndex = -1;
+    heading.focus({preventScroll:true});
+  }
+  playFilm.addEventListener('click', async () => {
+    if (!video.paused) { video.pause(); return; }
+    try { await video.play(); }
+    catch { document.querySelector('#film-status').textContent = '视频暂时无法播放，可以直接进入展演。'; }
+  });
+  video.addEventListener('play', () => { playFilm.firstChild.textContent = '暂停影像 '; });
+  video.addEventListener('pause', () => { playFilm.firstChild.textContent = '播放影像 '; });
+  video.addEventListener('ended', closeFilm);
+  video.addEventListener('error', () => { document.querySelector('#film-status').textContent = '视频暂时无法加载，可以直接进入展演。'; });
+  document.querySelector('#film-continue').addEventListener('click', closeFilm);
+  document.querySelector('#film-replay').addEventListener('click', openFilm);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && filmActive) video.pause(); });
+  const homeFilm = !location.hash || location.hash === '#1';
+  activate(homeFilm ? 0 : readPosition());
+  if (homeFilm) openFilm(); else film.hidden = true;
 })();
