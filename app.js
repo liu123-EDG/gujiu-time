@@ -407,7 +407,6 @@
   previous.addEventListener('click', () => go(index - 1));
   next.addEventListener('click', () => go(index + 1));
   document.addEventListener('keydown', event => {
-    if (document.querySelector('#culture-sources')?.open) return;
     if (filmActive) {
       if (event.key === 'Escape') { event.preventDefault(); closeFilm(); }
       return;
