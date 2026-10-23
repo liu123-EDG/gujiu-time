@@ -422,6 +422,7 @@
     if (event.key.toLowerCase() === 'f') toggleFullscreen();
   });
   document.querySelector('#deck').addEventListener('touchstart', event => {
+    if (event.target.closest('[data-game-controls]')) { touchStart = null; return; }
     if (event.touches.length === 1) touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
   }, { passive: true });
   document.querySelector('#deck').addEventListener('touchend', event => {

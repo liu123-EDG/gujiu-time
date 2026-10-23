@@ -1,0 +1,17 @@
+四张图使用内置 imagegen 工具生成，WebP 为无裁切压缩的网页版本。所有角色为成年虚构人物。以下为完整提示词。
+
+## moon-man
+
+Use case: stylized-concept. Asset type: portrait illustration for a Chinese wine culture presentation game. Create one exquisite anime / Chinese fantasy donghua character portrait, a handsome adult Chinese man age 25, long dark hair loosely tied, elegant ivory and midnight teal Hanfu, holding a small ceramic cup, warm gentle expression, moonlit river, silver moon and drifting ink mist. Waist-up three-quarter portrait, face beautifully detailed, complete head and elegant hands visible. Rich painterly linework, flowing fabrics, subtle paper grain, cinematic luminous lighting, refined sophisticated adult character design. Vertical 2:3 composition, fully painted scene background, no text, no lettering, no watermark, no UI, no collage. Cultural fantasy personification, not a historical reconstruction. Fully clothed.
+
+## moon-woman
+
+Use case: stylized-concept. Asset type: portrait illustration for a Chinese wine culture presentation game. Create one exquisite anime / Chinese fantasy donghua character portrait, a beautiful adult Chinese woman age 25, long black hair with simple silver hairpin, flowing ivory and midnight teal Hanfu, holding a small ceramic cup, thoughtful confident expression, moonlit river, silver moon and drifting ink mist. Waist-up three-quarter portrait, face beautifully detailed, complete head and elegant hands visible. Rich painterly linework, flowing fabrics, subtle paper grain, cinematic luminous lighting, refined sophisticated adult character design. Vertical 2:3 composition, fully painted scene background, no text, no lettering, no watermark, no UI, no collage. Cultural fantasy personification, not a historical reconstruction. Fully clothed.
+
+## osmanthus-man
+
+Use case: stylized-concept. Asset type: portrait illustration for a Chinese wine culture presentation game. Create one exquisite anime / Chinese fantasy donghua character portrait, a handsome adult Chinese man age 25, dark hair in graceful high knot, ornate cream and amber gold Hanfu, holding a small ceramic cup, bright confident smile, autumn osmanthus courtyard, golden blossoms and warm festival lanterns. Waist-up three-quarter portrait, face beautifully detailed, complete head and elegant hands visible. Rich painterly linework, flowing fabrics, subtle paper grain, cinematic luminous lighting, refined sophisticated adult character design. Vertical 2:3 composition, fully painted scene background, no text, no lettering, no watermark, no UI, no collage. Cultural fantasy personification, not a historical reconstruction. Fully clothed.
+
+## osmanthus-woman
+
+Use case: stylized-concept. Asset type: portrait illustration for a Chinese wine culture presentation game. Create one exquisite anime / Chinese fantasy donghua character portrait, a beautiful adult Chinese woman age 25, black hair with delicate golden osmanthus hair ornaments, ornate cream and amber gold Hanfu, holding a small ceramic cup, bright confident smile, autumn osmanthus courtyard, golden blossoms and warm festival lanterns. Waist-up three-quarter portrait, face beautifully detailed, complete head and elegant hands visible. Rich painterly linework, flowing fabrics, subtle paper grain, cinematic luminous lighting, refined sophisticated adult character design. Vertical 2:3 composition, fully painted scene background, no text, no lettering, no watermark, no UI, no collage. Cultural fantasy personification, not a historical reconstruction. Fully clothed.
